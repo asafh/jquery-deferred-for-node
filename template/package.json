@@ -1,6 +1,6 @@
 {
 	"name": "JQDeferred",
-	"version": "@VERSION@",
+	"version": "<%=version%>",
 	"description": "jQuery deferreds source and unit tests ported verbatim to nodejs using minimal, automated, code transformation",
 	"keywords": [
 	    "callback",
@@ -10,6 +10,16 @@
 	],
 	"homepage": "https://github.com/jaubourg/jquery-deferred-for-node",
 	"author": "Julian Aubourg <j@ubourg.net> (http://jaubourg.net/)",
+    "contributors": [
+        {
+            "name": "Julian Aubourg (http://jaubourg.net/)",
+            "email": "j@ubourg.net"
+        },
+        {
+            "name": "Asaf Haddad",
+            "email": "hello@ous.io"
+        }
+    ],
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/jaubourg/jquery-deferred-for-node.git"

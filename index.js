@@ -2,129 +2,82 @@ require( "plus" );
 
 var fs = require( "fs" ),
 	path = require( "path" ),
-	wrench = require( "wrench" ),
 	exec = require('child_process').exec,
 	imports = require( "./import/main" ),
 	versions = require( "./versions" ),
-	testDirs = [],
-	start = +new Date();
+    unzip = require("unzip"),
+    http = require("http"),
+    sylar = require("sylar"),
+    _ = require("lodash");
 
-function next() {
-
-	if ( versions.length ) {
-
-		var version = versions.shift(),
-			fullVersion = version + ( version.length < 5 ? ".0" : "" ),
-			packageDir = "./generated/" + fullVersion + "/";
-
-		function test() {
-			var nodeunit = "node_modules/nodeunit/bin/nodeunit " + packageDir + "test";
-			console.log( "\n" + nodeunit + "\n" );
-			exec( nodeunit, function( error, stdout, stderr ) {
-				if ( error ) {
-					throw stderr;
-				}
-				console.log( stdout );
-				next();
-			});
-		}
-
-		console.log( "\n---- STARTING GENERATION for JQUERY " + version + " ----\n" );
-
-		wrench.rmdirSyncRecursive( packageDir, true );
-		wrench.mkdirSyncRecursive( packageDir + "lib", 0777);
-		wrench.mkdirSyncRecursive( packageDir + "test", 0777);
-
-		({
-			"package.json": function( code ) {
-				return code.replace( "@VERSION@", fullVersion );
-			},
-			"lib/jquery.js": function( code ) {
-				return code;
-			}
-		}).forEach(function( filter, filename ) {
-			fs.readFile( "./template/" + path.basename( filename ), function( err, data ) {
-				if ( err ) {
-					throw err;
-				}
-				fs.writeFile( packageDir + filename, filter( "" + data ), function( err ) {
-					if ( err ) {
-						throw err;
-					}
-				});
-			});
-		});
-
-		exec( "git checkout " + version, { cwd: "./jquery" }, function( error, stdout, stderr ) {
-
-			if ( error ) {
-				throw stderr;
-			}
-
-			var out = {
-					jquery: "var jQuery = require( \"./jquery\" );\n"
-				},
-				src = version < "1.5.2" ? [ "core" ]
-					: ( version < "1.7" ? [ "deferred" ] :
-						( version < "1.8" ? [ "deferred", "callbacks" ] : [ "core", "deferred", "callbacks" ] ) ),
-				count = src.length,
-				countNext = count + 1;
-
-			src.forEach(function( id ) {
-				out[ id ] = undefined; // for proper ordering
-				imports.unit( id, function( err, code ) {
-					if ( err ) {
-						throw err;
-					}
-					fs.writeFile( packageDir + "test/" + id + ".js", code, function( err ) {
-						if ( err ) {
-							throw err;
-						}
-						if ( !( --countNext ) ) {
-							test();
-						}
-					});
-				});
-				imports.src( id, function( err, code ) {
-					if ( err ) {
-						throw err;
-					}
-					out[ id ] = code;
-					if ( !( --count ) ) {
-						fs.writeFile( packageDir + "lib/jquery-deferred.js", out.join( "\n" ), function( err ) {
-							if ( err ) {
-								throw err;
-							}
-							if ( !( --countNext ) ) {
-								test();
-							}
-						});
-					}
-				});
-			});
-		});
-	} else {
-		console.log( "\n---- FINISHED IN " + ( (new Date) - start ) * 0.001 + " sec ----\n" );
-	}
-
+/**
+ * @param tag {String} jQuery source tag to retreive, e.g. "1.9.1"
+ * @param callback {function(path)} callback with the path of the directory
+ *      containing the jQuery source for the tag requested.
+ */
+function getJQuery(tag, callback) {
+    var path = path.join("./jquery/",tag);
+    var done = function() {
+        callback(path);
+    };
+    fs.exists(path, function(exists) {
+        if(exists) {
+            done();
+        }
+        else {
+            http.get("https://github.com/jquery/jquery/archive/"+version+".zip", function(res) {
+                var doUnzip = unzip.Extract({path: path});
+                res.pipe(doUnzip);
+                doUnzip.on("finish", function() {
+                    done();
+                });
+            });
+        }
+    });
 }
 
-fs.exists( "./jquery", function( exists ) {
+versions.forEach(function(options, version) {
+    var targetDir = path.join("./dist", version);
 
-	if ( exists ) {
-		next();
-	} else {
-		console.log( "\n---- CLONING JQUERY REPOSITORY ----\n" );
-		exec( "git clone git://github.com/jquery/jquery.git", function( error, stdout, stderr ) {
+    getJQuery(version, function(jquery) {
+        sylar.data(jquery).done(function(jqSource) {
+            var data = {
+                jquery: jqSource,
+                version: version,
+                options: options
+            };
 
-			if ( error ) {
-				throw stderr;
-			}
+            //TODO: Add preprocess jquery source that will only affect node package
+            //TODO: Probably expose the filters in the data object and
+            // implement that transformation in the templates
 
-			console.log( stdout );
+            var sylarData = { //TODO: Look at the shorthand sylar.template, might fit here
+                src: "./template",
+                dest: targetDir,
+                filter: {
+                    "*": function(content) {
+                        return _.template(content, data);
+                    }
+                }
+            };
 
-			next();
-		});
-	}
-
+            sylar(sylarData).done(function() {
+                //TODO: run tests
+                /* Old test function, for reference...
+                 function test() {
+                     var nodeunit = "node_modules/nodeunit/bin/nodeunit " + packageDir + "test";
+                     console.log( "\n" + nodeunit + "\n" );
+                     exec( nodeunit, function( error, stdout, stderr ) {
+                         if ( error ) {
+                             throw stderr;
+                         }
+                         console.log( stdout );
+                         next();
+                     });
+                 }
+                 */
+                console.log(arguments);
+            });
+        });
+    });
 });
