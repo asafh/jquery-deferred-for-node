@@ -1,6 +1,7 @@
-generated
-jquery
-node_modules
-jquery-deferred-for-node.iml
-.idea
-.project
+/generated
+/jquery
+/node_modules
+/jquery-deferred-for-node.iml
+/.idea
+/.project
+/dist

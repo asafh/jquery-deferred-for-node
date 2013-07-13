@@ -1,6 +1,6 @@
 <%
 options.modules.forEach(function(module) {
-    //TODO: apply srcFilter and unitFilter
-    //TODO: Wrap them in nodeunit modules?
-    print(jquery.test.unit[module]);
+    var filter = imports.getFilter("unit",module);
+    var content = filter(jquery.test.unit[module])
+    print(content);
 });%>

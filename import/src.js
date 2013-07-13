@@ -1,4 +1,5 @@
-require( "plus" );
+//require( "plus" );
+var _ = require("lodash");
 
 var r_closure = /\(function\( jQuery \) {\n|}\)\( jQuery \);\n/g,
 	exprs = {
@@ -13,7 +14,7 @@ var r_closure = /\(function\( jQuery \) {\n|}\)\( jQuery \);\n/g,
 	r_inArray = /(jQuery\.inArray\(\s*)(.+?)(\s*,\s*)(.+?)(\s*[,\)])/g,
 	r_exprs = [];
 
-exprs.forEach(function( _, search ) {
+_.forOwn(exprs, function( _, search ) {
 	r_exprs.push( search.replace( ".", "\\." ) );
 });
 

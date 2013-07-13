@@ -11,11 +11,12 @@
 	"main": "index.js",
 	"dependencies": {
 		"nodeunit": "0.8.0",
-		"plus": "0.1.0",
 		"wrench": "1.5.1",
         "sylar": "0.3.x",
+        "request": "2.22.x",
         "unzip": "0.1.x",
-        "lodash": "1.2.x"
+        "lodash": "1.2.x",
+        "JQDeferred": "1.9.x"
 	},
 	"engines": {
 		"node": ">=0.6.0"
