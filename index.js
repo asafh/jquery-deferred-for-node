@@ -3,17 +3,16 @@
 var fs = require( "fs" ),
 	path = require( "path" ),
     url = require( "url" ),
-	exec = require('child_process').exec,
+    nodeunit = require('nodeunit'),
 	versions = require( "./versions" ),
     unzip = require("unzip"),
     request = require("request"),
-    http = require("http"),
     sylar = require("sylar"),
     Deferred = require( "JQDeferred"),
     _ = require("lodash"),
     Throttle = require("./throttle");
-
-var httpThrottle = new Throttle(1);
+var verbose = 0;
+var httpThrottle = new Throttle(1); //Don't kill Github
 
 RegExp.escape = RegExp.escape || function(s) {
     return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
@@ -77,7 +76,7 @@ var filters = {
 };
 
 function buildVersion(version, options) {
-    console.log(version, options);
+    console.log("Building", version, options);
     var targetDir = path.join("./dist", version);
     getJQuery(version)
         .then(function(val){
@@ -93,8 +92,7 @@ function buildVersion(version, options) {
                         var filter = filters.node[type];
                         try {
                             filter = [ require("./import/" + type + "_" + id) ].concat(filter);
-                        } catch (e) {
-                        }
+                        } catch (e) {}
                         return chain(filter);
                     }
                 }
@@ -105,20 +103,45 @@ function buildVersion(version, options) {
                 dest: targetDir,
                 data: data
             }).done(function() {
-                //TODO: run tests
-                /* Old test function, for reference...
-                 function test() {
-                 var nodeunit = "node_modules/nodeunit/bin/nodeunit " + packageDir + "test";
-                 console.log( "\n" + nodeunit + "\n" );
-                 exec( nodeunit, function( error, stdout, stderr ) {
-                 if ( error ) {
-                 throw stderr;
-                 }
-                 console.log( stdout );
-                 next();
-                 });
-                 }
-                 */
+                //Absolute path so that requiring by nodeunit will resolve properly:
+                var formatResult = function(assertions) {
+                    var failures = assertions.failures();
+                    return failures ? failures + " Failures!" : "Success";
+                }
+                var testDirectory = path.resolve(path.join(targetDir,"node"));
+                var v = function(verbosity) {
+                    return verbose >= verbosity;
+                }
+                nodeunit.runFiles([path.join(testDirectory,"test")], {
+                    moduleStart: function(name) {
+                        if(v(1)) {
+                            console.log(version, "Starting module test:",name);
+                        }
+                    },
+                    moduleDone: function(name, assertions) {
+                        if(v(1)) {
+                            console.log(version, "Module test complete:", name, formatResult(assertions));
+                        }
+                    },
+                    testStart: function(name) {
+                        if(v(2)) {
+                            console.log(version, "Starting Test:", name);
+                        }
+                    },
+                    testDone: function(name, assertions) {
+                        if(v(2)) {
+                            console.log(version, "Test Complete:", name, formatResult(assertions));
+                        }
+                    },
+                    log: function(assertion) {
+                        if(v(3)) {
+                            console.log(version, "Performed Assertion:", assertion);
+                        }
+                    },
+                    done: function(assertions) {
+                        console.log(version, "All tests complete:", formatResult(assertions));
+                    }
+                });
             });
         });
 }
@@ -135,3 +158,4 @@ function reverseArgs(fn,limit) {
 
 //"main":
 _.forOwn(versions, reverseArgs(buildVersion,2));
+//buildVersion("1.9.1", versions["1.9.1"]);
