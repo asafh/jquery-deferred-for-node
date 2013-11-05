@@ -71,7 +71,8 @@ var filters = {
         unit: [require("./import/src"), require("./import/unit")]
     },
     browser: {
-
+        src: [require("./import/src")],
+        unit: [require("./import/src"), require("./import/unit")]
     }
 };
 
@@ -88,11 +89,12 @@ function buildVersion(version, options) {
                 version: version,
                 options: options,
                 imports: {
-                    getFilter: function (type,id) {
-                        var filter = filters.node[type];
+                    getFilter: function (buildTarget, type,id) {
+                        var filter = filters[buildTarget][type];
                         try {
                             filter = [ require("./import/" + type + "_" + id) ].concat(filter);
                         } catch (e) {}
+
                         return chain(filter);
                     }
                 }

@@ -11,19 +11,22 @@ var r_closure = /\(function\( jQuery \) {\n|}\)\( jQuery \);\n/g,
 		"jQuery.when": "Deferred.when",
 		"window": "global"
 	},
-	r_inArray = /(jQuery\.inArray\(\s*)(.+?)(\s*,\s*)(.+?)(\s*[,\)])/g,
-	r_exprs = [];
+	r_inArray = /(jQuery\.inArray\(\s*)(.+?)(\s*,\s*)(.+?)(\s*[,\)])/g;
 
-_.forOwn(exprs, function( _, search ) {
-	r_exprs.push( search.replace( ".", "\\." ) );
-});
 
-r_exprs = new RegExp( "(\\b)(" + r_exprs.join( "|" ) + ")(\\b)", "g" );
 
-module.exports = function( code ) {
-	return code.replace( r_closure, "" )
-		.replace( r_inArray, "$1$4$3$2$5" )
-		.replace( r_exprs, function( _, before, expr, after ) {
-			return before + exprs[ expr ] + after;
-		});
+module.exports = function(type) {
+    var r_exprs = [];
+    _.forOwn(exprs, function( _, search ) {
+        r_exprs.push( search.replace( ".", "\\." ) );
+    });
+    r_exprs = new RegExp( "(\\b)(" + r_exprs.join( "|" ) + ")(\\b)", "g" );
+
+    return function( code ) {
+        return code.replace( r_closure, "" )
+            .replace( r_inArray, "$1$4$3$2$5" )
+            .replace( r_exprs, function( _, before, expr, after ) {
+                return before + exprs[ expr ] + after;
+            });
+    };
 };
